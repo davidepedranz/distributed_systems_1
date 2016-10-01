@@ -3,6 +3,7 @@ package lab3.actors;
 import akka.actor.ActorRef;
 import lab3.messages.ChatMessage;
 import lab3.messages.StopMessage;
+import lab3.vectorclock.VectorClockActor;
 
 import java.util.List;
 
@@ -11,13 +12,15 @@ import java.util.List;
  *
  * @author Davide Pedranz <davide.pedranz@gmail.com>
  */
-public class Chatter extends AbstractActor {
+public class Chatter extends VectorClockActor {
+
 
 	// initialization parameters
 	private final String topic;
 	private final boolean startDiscussion;
 
-	private boolean stop = false;
+	// stop when I get a "StopMessage"
+	private boolean stop;
 
 	/**
 	 * Create a new Chatter actor.
@@ -34,6 +37,9 @@ public class Chatter extends AbstractActor {
 		// initialize actor parameters
 		this.topic = topic;
 		this.startDiscussion = startDiscussion;
+
+		// current state
+		this.stop = false;
 	}
 
 	@Override
@@ -45,24 +51,20 @@ public class Chatter extends AbstractActor {
 	}
 
 	@Override
-	public void onReceive(Object message) throws Exception {
-		if (message instanceof StopMessage) {
-			stop = true;
-			System.out.println("Stopping actor... " + id);
-		}
-		super.onReceive(message);
-	}
-
-	@Override
 	protected final void onChatMessage(ChatMessage message) {
 
 		// if not mine message, reply to it
-		if (!stop && this.topic.equals(message.topic()) && message.sender() != id) {
+		if (!stop && this.topic.equals(message.topic()) && message.sender() != id()) {
 
 			// reply to the received message with an incremented value and the same topic
 			sendChatMessage(message.topic(), message.replies());
 		}
 	}
 
+	@Override
+	protected void onStopMessage(StopMessage message) {
+		stop = true;
+		System.out.println("Stopping chatter " + id() + "...");
+	}
 
 }
